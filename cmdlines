@@ -1,0 +1,21 @@
+# Shell functions to record exactly how we ran command-line tasks while making it easier
+# to run them again.
+
+function runProcessEImage() {
+    SUBSET=$1
+    OUTPUT=$2
+    setup astrometry_net_data s13-v1-$SUBSET
+    $OBS_LSSTSIM_DIR/bin/processEimage.py $S13_DATA_DIR/$SUBSET \
+        --configfile $S13_DIR/processEimage.py \
+        --id visit=1 raft=2,2 sensor=1,1 \
+        --output $S13_DATA_DIR/output/$SUBSET-$OUTPUT
+}
+
+function runMeasureCcd() {
+    SUBSET=$1
+    INPUT=$2
+    OUTPUT=$3
+    $MEAS_MULTIFIT_DIR/bin/measureCcd.py $S13_DATA_DIR/output/$SUBSET-$INPUT \
+        --id visit=1 raft=2,2 sensor=1,1 \
+        --output $S13_DATA_DIR/output/$SUBSET-$INPUT-$OUTPUT
+}
