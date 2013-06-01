@@ -1,4 +1,4 @@
-import lsst.s13
+import lsst.meas.multifit.starSelector
 
 root.calibrate.astrometry.forceKnownWcs = True
 
