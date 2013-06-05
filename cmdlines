@@ -3,19 +3,26 @@
 
 function runProcessEImage() {
     SUBSET=$1
-    OUTPUT=$2
+    shift
+    OUTPUT=$1
+    shift
     setup astrometry_net_data s13-v1-$SUBSET
     $OBS_LSSTSIM_DIR/bin/processEimage.py $S13_DATA_DIR/$SUBSET \
         --configfile $S13_DIR/processEimage.py \
         --id visit=1 raft=2,2 sensor=1,1 \
-        --output $S13_DATA_DIR/output/$SUBSET-$OUTPUT
+        --output $S13_DATA_DIR/output/$SUBSET-$OUTPUT \
+        $@
 }
 
 function runMeasureCcd() {
     SUBSET=$1
-    INPUT=$2
-    OUTPUT=$3
+    shift
+    INPUT=$1
+    shift
+    OUTPUT=$1
+    shift
     $MEAS_MULTIFIT_DIR/bin/measureCcd.py $S13_DATA_DIR/output/$SUBSET-$INPUT \
         --id visit=1 raft=2,2 sensor=1,1 \
-        --output $S13_DATA_DIR/output/$SUBSET-$INPUT-$OUTPUT
+        --output $S13_DATA_DIR/output/$SUBSET-$INPUT-$OUTPUT \
+        $@
 }
