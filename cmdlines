@@ -4,25 +4,30 @@
 function runProcessEImage() {
     SUBSET=$1
     shift
-    OUTPUT=$1
+    NOISE=$1
     shift
+    OUTPUT="$(printf "%s-%04d" ${SUBSET} ${NOISE})"
     setup astrometry_net_data s13-v1-$SUBSET
     $OBS_LSSTSIM_DIR/bin/processEimage.py $S13_DATA_DIR/$SUBSET \
-        --configfile $S13_DIR/processEimage.py \
+        --configfile $S13_DIR/config/processEimage.py \
+        --config noiseValue=$NOISE \
         --id visit=1 raft=2,2 sensor=1,1 \
-        --output $S13_DATA_DIR/output/$SUBSET-$OUTPUT \
+        --output $S13_DATA_DIR/output/$OUTPUT \
         $@
 }
 
 function runMeasureCcd() {
     SUBSET=$1
     shift
-    INPUT=$1
+    NOISE=$1
     shift
-    OUTPUT=$1
+    RERUN=$1
     shift
-    $MEAS_MULTIFIT_DIR/bin/measureCcd.py $S13_DATA_DIR/output/$SUBSET-$INPUT \
+    INPUT="$(printf "%s-%04d" ${SUBSET} ${NOISE})"
+    OUTPUT="${INPUT}-${RERUN}"
+    $MEAS_MULTIFIT_DIR/bin/measureCcd.py $S13_DATA_DIR/output/$INPUT \
+        --configfile $S13_DIR/config/measureCcd-$SUBSET.py \
         --id visit=1 raft=2,2 sensor=1,1 \
-        --output $S13_DATA_DIR/output/$SUBSET-$INPUT-$OUTPUT \
+        --output $S13_DATA_DIR/output/$OUTPUT \
         $@
 }
