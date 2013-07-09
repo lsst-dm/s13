@@ -30,10 +30,10 @@ def main(inputPath, outputPath):
             data = line.split(",")
             record = catalog.addNew()
             record.setId(int(data[0]))
-            coord = lsst.afw.coord.IcrsCoord(float(data[1])*lsst.afw.geom.degrees,
-                                             float(data[2])*lsst.afw.geom.degrees)
+            record.setString(Keys.sed, data[1])
+            coord = lsst.afw.coord.IcrsCoord(float(data[2])*lsst.afw.geom.degrees,
+                                             float(data[3])*lsst.afw.geom.degrees)
             record.setCoord(coord)
-            record.setString(Keys.sed, data[3])
             record.setD(Keys.mag_norm, float(data[4]))
             record.setD(Keys.redshift, float(data[5]))
             record.setD(Keys.sindex, float(data[6]))
