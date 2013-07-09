@@ -1,5 +1,6 @@
 setupRequired(s13_data)
 setupRequired(meas_multifit)
 setupRequired(obs_lsstSim)
+setupRequired(astrometry_net_data s13-v2)
 
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
