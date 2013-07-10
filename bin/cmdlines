@@ -6,11 +6,19 @@ function runProcessEImage() {
     shift
     NOISE=$1
     shift
-    OUTPUT="$(printf "%s-%04d" ${SUBSET} ${NOISE})"
+    OUTPUT="$(printf "%s-%04d-deep" ${SUBSET} ${NOISE})"
     $OBS_LSSTSIM_DIR/bin/processEimage.py $S13_DATA_DIR/$SUBSET \
         --configfile $S13_DIR/config/processEimage.py \
         --config noiseValue=$NOISE \
-        --id visit=100 raft=2,2 sensor=1,1 \
+        --id visit=100 raft=2,2 \
+        --output $S13_DATA_DIR/output/$OUTPUT \
+        $@
+    OUTPUT="$(printf "%s-%04d-coadd" ${SUBSET} ${NOISE})"
+    NV=`echo "$NOISE / 32" | bc`
+    $OBS_LSSTSIM_DIR/bin/processEimage.py $S13_DATA_DIR/$SUBSET \
+        --configfile $S13_DIR/config/processEimage.py \
+        --config noiseValue=$NV   \
+        --id visit=1..32 raft=2,2 \
         --output $S13_DATA_DIR/output/$OUTPUT \
         $@
 }
@@ -22,7 +30,7 @@ function runMeasureCcd() {
     shift
     RERUN=$1
     shift
-    INPUT="$(printf "%s-%04d" ${SUBSET} ${NOISE})"
+    INPUT="$(printf "%s-%04d-deep" ${SUBSET} ${NOISE})"
     OUTPUT="${INPUT}-${RERUN}"
     $MEAS_MULTIFIT_DIR/bin/measureCcd.py $S13_DATA_DIR/output/$INPUT \
         --configfile $S13_DIR/config/measureCcd-$SUBSET.py \
