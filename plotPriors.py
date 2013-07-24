@@ -5,6 +5,8 @@ import os
 import cPickle
 import numpy
 from matplotlib import pyplot
+from matplotlib.colors import LogNorm
+from matplotlib.colorbar import Colorbar
 
 import lsst.afw.geom as geom
 import lsst.afw.geom.ellipses as el
@@ -31,87 +33,68 @@ def convert(subset):
     with open(outFile, 'w') as outStream:
         cPickle.dump((ellipticity, radius), outStream, protocol=2)
 
-def plot(subset):
-    inFile = os.path.join(os.environ["S13_DATA_DIR"], "reference_cats_dithered", "%s.p" % subset)
-    with open(inFile, 'r') as inStream:
-        ellipticity, radius = cPickle.load(inStream)
-    pyplot.figure()
-    pyplot.hist(radius, bins=50)
-    pyplot.figure()
-    pyplot.hist(ellipticity, bins=50)
-    pyplot.figure()
-    pyplot.hexbin(ellipticity, radius, bins=50)
-    pyplot.show()
-
 def read(subset):
     inFile = os.path.join(os.environ["S13_DATA_DIR"], "reference_cats_dithered", "%s.p" % subset)
     with open(inFile, 'r') as inStream:
         ellipticity, radius = cPickle.load(inStream)
     return ellipticity, radius
 
-def fit(ellipticity, radius, nComponents=10):
-    data = transform(ellipticity, radius)
-    from sklearn import mixture
-    clf = mixture.GMM(n_components=nComponents, cvtype='full')
-    clf.fit(data)
-    return data, clf
-
-def plotFit(data, clf):
-    cmap = pyplot.cm.jet
-    n = data.shape[0] / 2
-
-    fig1 = pyplot.figure()
-    ax = fig1.add_subplot(1,1,1)
-    ax.hexbin(data[:,0], data[:,1], bins=50, cmap=cmap, marginals=True)
-    for mean, covar in zip(clf.means, clf.covars):
-        ellipse = el.Ellipse(el.Quadrupole(covar[0,0], covar[1,1], covar[0,1]),
-                             geom.Point2D(mean[0], mean[1]))
-        ellipse.plot(fill=False, axes=ax, show=False)
-    fig1.canvas.draw()
-
-    import mpl_toolkits.mplot3d
-    h, xe, ye = numpy.histogram2d(data[:n,0], data[:n,1], bins=(25,25), normed=True)
-    xc = 0.5*(xe[1:] + xe[:-1])
-    yc = 0.5*(ye[1:] + ye[:-1])
-    xg, yg = numpy.meshgrid(xc, yc)
-
-    fig2 = pyplot.figure(figsize=(18, 6))
-    ax = fig2.add_subplot(1,3,1, projection='3d')
-    ax.plot_surface(xg, yg, h.transpose(), rstride=1, cstride=1, shade=False, cmap=cmap,
-                    linewidth=0, antialiased=False, vmin=0, vmax=0.8)
-    ax.set_xlabel("ellipticity")
-    ax.set_ylabel("radius")
-    ax.set_zlim(0, 0.8)
-
-    obs1 = numpy.array([xg.flatten(), yg.flatten()]).transpose()
-    obs2 = numpy.array([-xg.flatten(), yg.flatten()]).transpose()
-    logprob1, posteriors1 = clf.eval(obs1)
-    logprob2, posteriors2 = clf.eval(obs2)
-    z = (numpy.exp(logprob1) + numpy.exp(logprob2)).reshape(xg.shape)
-
-    ax = fig2.add_subplot(1,3,2, projection='3d')
-    ax.plot_surface(xg, yg, z, rstride=1, cstride=1, shade=False, cmap=cmap,
-                    linewidth=0, antialiased=False, vmin=0, vmax=0.8)
-    ax.set_xlabel("ellipticity")
-    ax.set_ylabel("radius")
-    ax.set_zlim(0, 0.8)
-
-    ax = fig2.add_subplot(1,3,3, projection='3d')
-    ax.plot_surface(xg, yg, h.transpose() - z,
-                    rstride=1, cstride=1, shade=False, cmap=cmap,
-                    linewidth=0, antialiased=False)
-    ax.set_xlabel("ellipticity")
-    ax.set_ylabel("radius")
-    ax.set_zlim(-0.4, 0.4)
-
-def transform(ellipticity, radius):
+def transform3d(ellipticity, radius, m=4):
     n = ellipticity.size
-    data = numpy.zeros((2*n, 2), dtype=float)
-    data[:n,0] = ellipticity
-    data[:n,1] = radius
-    data[n:,0] = -ellipticity
-    data[n:,1] = radius
+    data = numpy.zeros((m*n, 3), dtype=float)
+    theta = numpy.random.rand(n) * numpy.pi
+    for i in range(m):
+        data[n*i:n*(i+1),0] = ellipticity * numpy.cos(2*(theta + i*numpy.pi/m))
+        data[n*i:n*(i+1),1] = ellipticity * numpy.sin(2*(theta + i*numpy.pi/m))
+        data[n*i:n*(i+1),2] = radius
     return data
+
+def plotDensity(data, ix, iy, xlabel, ylabel, mixture=None, bins=50, weights=None, cmap=pyplot.cm.Greys):
+    h2d, xEdges, yEdges = numpy.histogram2d(data[:,ix], data[:,iy], normed=True, bins=bins, weights=weights)
+    xCenters = 0.5*(xEdges[1:] + xEdges[:-1])
+    yCenters = 0.5*(yEdges[1:] + yEdges[:-1])
+    norm = LogNorm(clip=True)
+    levels = [0.0125, 0.025, 0.05, 0.1, 0.2, 0.4, 0.8]
+    fig = pyplot.figure("%s vs %s" % (ylabel, xlabel))
+    ax2d = fig.add_subplot(2,2,3)
+    image = ax2d.imshow(h2d.transpose(), interpolation='nearest', origin='lower', cmap=cmap, alpha=0.8,
+                        extent=(xEdges[0], xEdges[-1], yEdges[0], yEdges[-01]), norm=norm, aspect='auto')
+    contours = ax2d.contour(xCenters, yCenters, h2d.transpose(), colors='k', norm=norm, levels=levels)
+    ax2d.set_ylabel(ylabel)
+    ax2d.set_xlabel(xlabel)
+    ax1y = fig.add_subplot(2,2,4, sharey=ax2d)
+    ax1y.hist(data[:,iy], bins=bins, weights=weights, orientation='horizontal', linewidth=0,
+              facecolor='k', alpha=0.5, normed=True)
+    ax1y.get_yaxis().set_visible(False)
+    ax1x = fig.add_subplot(2,2,1, sharex=ax2d)
+    ax1x.hist(data[:,ix], bins=bins, weights=weights, orientation='vertical', linewidth=0,
+              facecolor='k', alpha=0.5, normed=True)
+    ax1x.get_xaxis().set_visible(False)
+    bbox1x = ax1x.get_position()
+    bbox1y = ax1y.get_position()
+    rect = (bbox1y.x0, bbox1x.y0, 0.2*(bbox1y.x1 - bbox1y.x0), bbox1x.y1 - bbox1x.y0)
+    axcb = fig.add_axes(rect)
+    cb = fig.colorbar(image, cax=axcb)
+    cb.add_lines(contours)
+    if mixture is not None:
+        mix2d = mixture.project(ix, iy)
+        xr = numpy.linspace(xEdges[0], xEdges[-1], 500)
+        yr = numpy.linspace(yEdges[0], yEdges[-1], 500)
+        xg, yg = numpy.meshgrid(xr, yr)
+        xy = numpy.array([xg.flatten(), yg.flatten()]).transpose().copy()
+        pxy = numpy.zeros(xy.shape[0], dtype=float)
+        mix2d.evaluate(xy, pxy)
+        pg = pxy.reshape(xg.shape)
+        ax2d.contour(xg, yg, pg, colors='r', norm=norm, levels=levels)
+        mix1x = mixture.project(ix)
+        px = numpy.zeros(xr.shape, dtype=float)
+        mix1x.evaluate(xr.reshape(-1,1), px)
+        ax1x.plot(xr, px, 'r')
+        mix1y = mixture.project(iy)
+        py = numpy.zeros(yr.shape, dtype=float)
+        mix1y.evaluate(yr.reshape(-1,1), py)
+        ax1y.plot(py, yr, 'r')
+    return ax2d, ax1x, ax1y
 
 if __name__ == "__main__":
     if sys.argv[1] == "convert":
