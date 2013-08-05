@@ -1,6 +1,5 @@
 import lsst.meas.multifit.starSelector
 
-root.calibrate.astrometry.forceKnownWcs = True
 
 # The PSF should be super-well constrained, and we know where all the stars
 # are, so let's not reject any of them.
@@ -25,3 +24,12 @@ root.calibrate.detection.background.algorithm = "CONSTANT"
 root.detection.background.algorithm = "CONSTANT"
 root.calibrate.repair.doCosmicRay = False
 root.calibrate.repair.doInterpolate = False
+
+# temporary test changes made by pgee 
+# astrometry changes to fix problems with sims with stars on a grid.
+root.calibrate.astrometry.forceKnownWcs = True
+root.calibrate.astrometry.solver.calculateSip=False 
+
+
+
+
