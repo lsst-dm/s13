@@ -14,7 +14,7 @@ function runProcessEImage() {
         --output $S13_DATA_DIR/output/$OUTPUT \
         $@
     OUTPUT="$(printf "%s-%04d-coadd" ${SUBSET} ${NOISE})"
-    NV=`echo "$NOISE / 32" | bc`
+    NV=`echo "$NOISE * 32" | bc`
     $OBS_LSSTSIM_DIR/bin/processEimage.py $S13_DATA_DIR/$SUBSET \
         --configfile $S13_DIR/config/processEimage.py \
         --config noiseValue=$NV   \
