@@ -19,6 +19,9 @@ root.doAddNoise = True
 root.noiseValue = 1000
 root.measurement.algorithms["flux.sinc"].radius2 = 5.0
 
+root.calibrate.detection.returnOriginalFootprints = False
+root.detection.returnOriginalFootprints = False
+
 root.calibrate.background.algorithm = "CONSTANT"
 root.calibrate.detection.background.algorithm = "CONSTANT"
 root.detection.background.algorithm = "CONSTANT"

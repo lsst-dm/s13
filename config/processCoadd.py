@@ -1,5 +1,8 @@
 root.measurement.algorithms["flux.sinc"].radius2 = 5.0
 
+root.detection.returnOriginalFootprints = False
+root.calibrate.detection.returnOriginalFootprints = False
+
 root.calibrate.doBackground = False
 root.calibrate.detection.reEstimateBackground = False
 root.detection.reEstimateBackground = False
