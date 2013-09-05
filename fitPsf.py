@@ -93,6 +93,60 @@ def displayResiduals(image, msf):
     grid = mosaic.makeMosaic()
     lsst.afw.display.ds9.mtv(grid)
 
+def plotResiduals(image, msf, vmax=0.001):
+    data = image.clone()
+    factor = data.getArray().max()
+    data /= factor
+    model = data.clone()
+    model.set(0.0)
+    msf.evaluate().addToImage(model)
+    model /= factor
+    residuals = data.clone()
+    residuals -= model
+    orderStr = str(tuple(element.getOrder() for element in msf.getElements()))
+    title = "order=%s, max_abs_err=%f, rms_err=%f" % (orderStr, numpy.abs(residuals.getArray()).max(),
+                                                      residuals.getArray().std())
+    fig = pyplot.figure(title, figsize=(9,2.7))
+    center = lsst.afw.geom.Point2D(data.getWidth() // 2, data.getHeight() // 2)
+    def drawEllipses(ax):
+        for element in msf.getElements():
+            ellipse = lsst.afw.geom.ellipses.Ellipse(element.getEllipse())
+            ellipse.setCenter(center)
+            ellipse.plot(axes=ax, fill=False, rescale=False, show=False, edgecolor='b')
+    ax1 = fig.add_subplot(1,3,1)
+    colors12 = ax1.imshow(data.getArray(), interpolation='nearest',
+                          vmin=0.0, vmax=1.0, origin='lower', cmap=pyplot.cm.Greys_r)
+    drawEllipses(ax1)
+    ax1.axis("off")
+    ax1.set_title("data")
+    ax2 = fig.add_subplot(1,3,2)
+    ax2.imshow(model.getArray(), interpolation='nearest',
+               vmin=0.0, vmax=1.0, origin='lower', cmap=pyplot.cm.Greys_r)
+    drawEllipses(ax2)
+    ax2.axis("off")
+    ax2.set_title("model")
+    ax3 = fig.add_subplot(1,3,3)
+    colors3 = ax3.imshow(residuals.getArray(), interpolation='nearest',
+                         vmin=-vmax, vmax=vmax, origin='lower', cmap=pyplot.cm.RdGy)
+    drawEllipses(ax3)
+    ax3.axis("off")
+    ax3.set_title(unicode("residuals"))
+    fig.subplots_adjust(left=0.02, right=0.92, top=0.88, bottom=0.05)
+    bbox1 = ax1.get_position()
+    bbox2 = ax2.get_position()
+    bbox3 = ax3.get_position()
+    bbox2.x0 = bbox1.x1 + 0.005
+    bbox2.x1 = bbox2.x0 + (bbox1.x1 - bbox1.x0)
+    ax2.set_position(bbox2)
+    bbox3.x0 = bbox3.x0 - 0.02
+    bbox3.x1 = bbox3.x0 + (bbox1.x1 - bbox1.x0)
+    ax3.set_position(bbox3)
+    cax12 = fig.add_axes([bbox2.x1 + 0.01, bbox2.y0, 0.01, bbox2.height])
+    fig.colorbar(colors12, cax12, orientation='vertical', ticks=[0.0, 0.5, 1.0])
+    cax3 = fig.add_axes([bbox3.x1 + 0.01, bbox3.y0, 0.01, bbox3.height])
+    fig.colorbar(colors3, cax3, orientation='vertical', ticks=[-vmax, 0.0, vmax])
+    return fig
+
 def fitFull(image, orders, radii=None, p0=None, penalty=0.01):
     bbox = image.getBBox(lsst.afw.image.PARENT)
     x, y = numpy.meshgrid(numpy.arange(bbox.getBeginX(), bbox.getEndX(), dtype=float),
@@ -152,3 +206,15 @@ def fitFull(image, orders, radii=None, p0=None, penalty=0.01):
 def showMSF(msf):
     for element in msf.getElements():
         print element.getEllipse().getCore().getTraceRadius(), element.getCoefficients()
+
+def plotSuite():
+    psf, _ = read()
+    msf1, _ = fitFull(psf, (4,0), radii=(1.5, 4.0))
+    msf2, _ = fitFull(psf, (0,4,4), radii=(0.1, 1.2, 3.0))
+    fig1 = plotResiduals(psf, msf1, vmax=0.002)
+    fig2 = plotResiduals(psf, msf2, vmax=0.001)
+    return fig1, fig2, msf1, msf2
+
+if __name__ == "__main__":
+    plotSuite()
+    pyplot.show()
